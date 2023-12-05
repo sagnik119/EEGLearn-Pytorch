@@ -68,29 +68,34 @@ class EEGImagesDataset(Dataset):
 def Test_Model(net, Testloader, criterion, is_cuda=True):
     running_loss = 0.0 
     evaluation = []
+    predicted_whole = []
+    labels_whole = []
     for i, data in enumerate(Testloader, 0):
         input_img, labels = data
         input_img = input_img.to(torch.float32)
         if is_cuda:
-            input_img = input_img.cuda()
+            input_img = input_img
         outputs = net(input_img)
         _, predicted = torch.max(outputs.cpu().data, 1)
         evaluation.append((predicted==labels).tolist())
-        loss = criterion(outputs, labels.cuda())
+        loss = criterion(outputs, labels)
         running_loss += loss.item()
+        predicted_whole.append(predicted)
+        labels_whole.append(labels)
+        
     running_loss = running_loss/(i+1)
     evaluation = [item for sublist in evaluation for item in sublist]
     running_acc = sum(evaluation)/len(evaluation)
-    return running_loss, running_acc
+    return running_loss, running_acc, predicted_whole, labels_whole
 
 
 def TrainTest_Model(model, trainloader, testloader, n_epoch=30, opti='SGD', learning_rate=0.0001, is_cuda=True, print_epoch =5, verbose=False):
     if is_cuda:
-        net = model().cuda()
+        net = model()
     else :
         net = model()
         
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(weight=torch.tensor([0.1, 0.9]))
     
     if opti=='SGD':
         optimizer = optim.SGD(net.parameters(), lr=learning_rate)
@@ -109,10 +114,17 @@ def TrainTest_Model(model, trainloader, testloader, n_epoch=30, opti='SGD', lear
             optimizer.zero_grad()
 
             # forward + backward + optimize
-            outputs = net(inputs.to(torch.float32).cuda())
+            outputs = net(inputs.to(torch.float32))
             _, predicted = torch.max(outputs.cpu().data, 1)
             evaluation.append((predicted==labels).tolist())
-            loss = criterion(outputs, labels.cuda())
+            #outputs = outputs.to(torch.float32)
+            #labels  = labels.to(torch.float32)
+            outputs = outputs.float()
+            #labels  = labels.float()
+            # print(outputs.dtype)
+            # print(labels.dtype)
+                        
+            loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
 
@@ -121,16 +133,16 @@ def TrainTest_Model(model, trainloader, testloader, n_epoch=30, opti='SGD', lear
         running_loss = running_loss/(i+1)
         evaluation = [item for sublist in evaluation for item in sublist]
         running_acc = sum(evaluation)/len(evaluation)
-        validation_loss, validation_acc = Test_Model(net, testloader, criterion,True)
+        validation_loss, validation_acc, predicted_test, labels_test = Test_Model(net, testloader, criterion,True)
         
-        if epoch%print_epoch==(print_epoch-1):
-            print('[%d, %3d]\tloss: %.3f\tAccuracy : %.3f\t\tval-loss: %.3f\tval-Accuracy : %.3f' %
+        #if epoch%print_epoch==(print_epoch-1):
+        print('[%d, %3d]\tloss: %.3f\tAccuracy : %.3f\t\tval-loss: %.3f\tval-Accuracy : %.3f' %
              (epoch+1, n_epoch, running_loss, running_acc, validation_loss, validation_acc))
     if verbose:
         print('Finished Training \n loss: %.3f\tAccuracy : %.3f\t\tval-loss: %.3f\tval-Accuracy : %.3f' %
                  (running_loss, running_acc, validation_loss,validation_acc))
     
-    return (running_loss, running_acc, validation_loss,validation_acc)
+    return (running_loss, running_acc, validation_loss,validation_acc, predicted_test, labels_test)
 
 
 

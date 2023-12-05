@@ -41,7 +41,7 @@ class BasicCNN(nn.Module):
     param n_classes: number of classes
     return x: output of the last layers after the log softmax
     '''
-    def __init__(self, input_image=torch.zeros(1, 3, 32, 32), kernel=(3,3), stride=1, padding=1,max_kernel=(2,2), n_classes=4):
+    def __init__(self, input_image=torch.zeros(1, 8, 128, 128), kernel=(3,3), stride=1, padding=1,max_kernel=(2,2), n_classes=2):
         super(BasicCNN, self).__init__()
 
         n_channel = input_image.shape[1]
@@ -58,7 +58,7 @@ class BasicCNN(nn.Module):
         self.pool = nn.MaxPool2d((1,1))
         self.drop = nn.Dropout(p=0.5)
 
-        self.fc1 = nn.Linear(2048,512)
+        self.fc1 = nn.Linear(32768,512)
         self.fc2 = nn.Linear(512,n_classes)
         self.max = nn.LogSoftmax()
     
