@@ -70,12 +70,14 @@ def Test_Model(net, Testloader, criterion, is_cuda=True):
     evaluation = []
     predicted_whole = []
     labels_whole = []
+    embeddings = []
     for i, data in enumerate(Testloader, 0):
         input_img, labels = data
         input_img = input_img.to(torch.float32)
         if is_cuda:
             input_img = input_img
-        outputs = net(input_img)
+        outputs, embedding = net(input_img)
+        embeddings.append(embedding)
         _, predicted = torch.max(outputs.cpu().data, 1)
         evaluation.append((predicted==labels).tolist())
         loss = criterion(outputs, labels)
@@ -86,7 +88,7 @@ def Test_Model(net, Testloader, criterion, is_cuda=True):
     running_loss = running_loss/(i+1)
     evaluation = [item for sublist in evaluation for item in sublist]
     running_acc = sum(evaluation)/len(evaluation)
-    return running_loss, running_acc, predicted_whole, labels_whole
+    return (running_loss, running_acc, predicted_whole, labels_whole), embeddings
 
 
 def TrainTest_Model(model, trainloader, testloader, n_epoch=30, opti='SGD', learning_rate=0.0001, is_cuda=True, print_epoch =5, verbose=False):
@@ -95,7 +97,7 @@ def TrainTest_Model(model, trainloader, testloader, n_epoch=30, opti='SGD', lear
     else :
         net = model()
         
-    criterion = nn.CrossEntropyLoss(weight=torch.tensor([0.1, 0.9]))
+    criterion = nn.CrossEntropyLoss(weight=torch.tensor([0.03, 0.97]))
     
     if opti=='SGD':
         optimizer = optim.SGD(net.parameters(), lr=learning_rate)
